@@ -19,8 +19,12 @@ class fastpt(Theory):
 
         self.z_mps = np.linspace(0,2,100,endpoint=False)
         self.k = np.logspace(-4, 2, 2000)
-        self.fptmodel = FASTPT(self.k, to_do=['IA_tt'], low_extrap=-5, high_extrap=3, n_pad=int(0.5*len(self.k)))
-        self.handler = FPTHandler(self.fptmodel)
+        self.P_window=np.array([.2,.2])  
+        self.C_window=.65  
+        self.fptmodel = FASTPT(self.k,
+                               low_extrap=-5, high_extrap=3, 
+                               n_pad=int(0.5*len(self.k)))
+        
         self.req = {
           "H0": None,
           "omegabh2": None,
@@ -55,20 +59,33 @@ class fastpt(Theory):
         self.mps = self.mpsinterp.P(0, self.k)
         
         
-        self.handler.update_default_params(P=self.mps, P_window=np.array([0.2, 0.2]), C_window=0.75)
-        state['IA_tt'] = self.handler.run("IA_tt")
-        #state['IA_ta'] = self.handler.run("IA_ta")
-        #state['IA_der'] = self.handler.run("IA_der")
-        #state['IA_ct'] = self.handler.run("IA_ct")
-        #state['IA_mix'] = self.handler.run("IA_mix")
+        state['IA_tt'] = self.fptmodel.IA_tt(self.mps, P_window=self.P_window, C_window=self.C_window)
+        state['IA_ta'] = self.fptmodel.IA_ta(self.mps, P_window=self.P_window, C_window=self.C_window)
+        state['IA_der'] = self.fptmodel.IA_der(self.mps, P_window=self.P_window, C_window=self.C_window)
+        state['IA_ct'] = self.fptmodel.IA_ct(self.mps, P_window=self.P_window, C_window=self.C_window)
+        state['IA_mix'] = self.fptmodel.IA_mix(self.mps, P_window=self.P_window, C_window=self.C_window)
+        state['GI_ct'] = self.fptmodel.gI_ct(self.mps, P_window=self.P_window, C_window=self.C_window)
+        state['GI_tt'] = self.fptmodel.gI_tt(self.mps, P_window=self.P_window, C_window=self.C_window)
+        state['GI_ta'] = self.fptmodel.gI_ta(self.mps, P_window=self.P_window, C_window=self.C_window)
+
+
 
         return True
 
     def get_IA_PS(self):
-        IA = np.zeros((3,len(self.k)))
-        IA[0] = self.k
-        IA[1] = self.current_state['IA_tt'][0]
-        IA[2] = self.current_state['IA_tt'][1]
+        IA = np.vstack([
+                        self.k,
+                        self.current_state['IA_der'],
+                        *self.current_state['IA_tt'],
+                        *self.current_state['IA_mix'],
+                        *self.current_state['IA_ta'],
+                        *self.current_state['IA_ct'],
+                        *self.current_state['GI_ct'],
+                        *self.current_state['GI_ta'],
+                        *self.current_state['GI_tt'], #check if repeated
+                        ])
+
+
         return IA
 
 
