@@ -45,6 +45,7 @@ class fastpt(Theory):
         self.C_window=.65  
         self.fptmodel = FASTPT(self.k, # treated by FAST-PT as in 1/Mpc, but should be scale-invariant
                                low_extrap=-5, high_extrap=3, 
+                               #low_extrap=-7.84, high_extrap=5.65,
                                n_pad=int(0.5*len(self.k)))
         
         ### Set up requirements for cobaya
@@ -130,7 +131,7 @@ class fastpt(Theory):
         state['IA_tt']  = self.fptmodel.IA_tt(self.mps, P_window=self.P_window, C_window=self.C_window)
         state['IA_ta']  = self.fptmodel.IA_ta(self.mps, P_window=self.P_window, C_window=self.C_window)
         state['IA_mix'] = self.fptmodel.IA_mix(self.mps, P_window=self.P_window, C_window=self.C_window)
-        state['one_loop_dd_bias'] = self.fptmodel.one_loop_dd_bias(self.mps, 
+        state['one_loop_dd_bias_b3nl'] = self.fptmodel.one_loop_dd_bias_b3nl(self.mps, 
                                             P_window=self.P_window, C_window=self.C_window)
         ### JX: Below terms are not used in current implementation
         #state['IA_der'] = self.fptmodel.IA_der(self.mps, P_window=self.P_window, C_window=self.C_window)
@@ -177,7 +178,7 @@ class fastpt(Theory):
         ''' Retrieve the computed galaxy-intrinsic alignment power spectra at z=0.
         =============================================================================
         Returns:
-        FPTbias : np.ndarray, (d1d2, d2d2, d1s2, d2s2, s2s2, k, p_lin)
+        FPTbias : np.ndarray, (d1d2, d2d2, d1s2, d2s2, s2s2, d1p3, k, p_lin)
             A 2D array containing the intrinsic alignment power spectra at z=0, with
             each row corresponding to a different component and columns representing 
             k values.
@@ -188,13 +189,15 @@ class fastpt(Theory):
         # FAST-PT: k in h/Mpc and power spectrum in (Mpc/h)^3 (scale-invariant)
         # CosmoLike: k in c/H0 and power spectrum in (c/H0)^-3
         FPTbias = np.vstack([
-                        self.current_state['one_loop_dd_bias'][2], # d1d2
-                        self.current_state['one_loop_dd_bias'][3], # d2d2
-                        self.current_state['one_loop_dd_bias'][4], # d1s2
-                        self.current_state['one_loop_dd_bias'][5], # d2s2
-                        self.current_state['one_loop_dd_bias'][6], # s2s2
+                        self.current_state['one_loop_dd_bias_b3nl'][2], # d1d2
+                        self.current_state['one_loop_dd_bias_b3nl'][3], # d2d2
+                        self.current_state['one_loop_dd_bias_b3nl'][4], # d1s2
+                        self.current_state['one_loop_dd_bias_b3nl'][5], # d2s2
+                        self.current_state['one_loop_dd_bias_b3nl'][6], # s2s2
+                        self.current_state['one_loop_dd_bias_b3nl'][8], # d1p3
                         self.k_dimless, # dimensionless
                         self.mps / (self.coverH0**3), # dimensionless
                         ])
+        #print(f'sigma4 term is {self.current_state["one_loop_dd_bias"][7]}!!!')
         FPTbias[:-2,:] /= (self.coverH0**3) # convert from (Mpc/h)^3 to dimensionless
-        return FPTbias
+        return FPTbias, self.current_state["one_loop_dd_bias_b3nl"][7]/(self.coverH0**3)
